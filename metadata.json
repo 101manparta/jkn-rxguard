@@ -1,0 +1,6 @@
+{
+  "name": "JKN RXGUARD - Healthcare Risk Intelligence Terminal",
+  "description": "Sistem Intelijen Risiko Pelayanan JKN: Deteksi pola risiko, anomali klaim obat, dan korelasi jaringan fasilitas kesehatan secara real-time.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

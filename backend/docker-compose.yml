@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  rxguard-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rxguard-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres_secure_pass
+      - DB_NAME=rxguard
+      - DB_SSLMODE=disable
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+      - REDIS_ENABLED=true
+      - JWT_SECRET=rxguard-production-jwt-super-secret-key-32chars
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - rxguard-net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: rxguard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_secure_pass
+      POSTGRES_DB: rxguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations/000001_init_schema.up.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./migrations/000002_seed_data.up.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rxguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rxguard-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: rxguard-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rxguard-net
+
+networks:
+  rxguard-net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:

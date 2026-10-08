@@ -1,0 +1,205 @@
+openapi: 3.0.3
+info:
+  title: JKN RXGUARD Healthcare Risk Intelligence Terminal API
+  version: 1.0.0
+  description: >
+    API Backend resmi untuk sistem intelijen risiko pelayanan JKN (Healthcare Risk Intelligence Terminal).
+    Menyediakan deteksi dini anomali resep, perpindahan faskes abnormal, korelasi sindikasi jejaring 3D,
+    lembar kerja investigasi terpadu, dan audit trail tidak dapat diubah (immutable).
+servers:
+  - url: /api/v1
+    description: Production & Development v1 REST API Gateway
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: analyst.demo
+        password:
+          type: string
+          example: password
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+        user:
+          $ref: '#/components/schemas/User'
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [ADMIN, ANALYST, AUDITOR]
+        status:
+          type: string
+          enum: [ACTIVE, DISABLED]
+    OverviewSummary:
+      type: object
+      properties:
+        riskIndex:
+          type: number
+          example: 72.8
+        activeAlerts:
+          type: integer
+          example: 43
+        criticalAlerts:
+          type: integer
+          example: 8
+        highAlerts:
+          type: integer
+          example: 43
+        networkClusters:
+          type: integer
+          example: 17
+    Participant:
+      type: object
+      properties:
+        id:
+          type: string
+          example: P00182
+        riskScore:
+          type: integer
+          example: 87
+        riskLevel:
+          type: string
+          example: TINGGI
+        facilitiesCount:
+          type: integer
+        medicationEvents:
+          type: integer
+        status:
+          type: string
+    NetworkGraph:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            type: object
+        edges:
+          type: array
+          items:
+            type: object
+    TerminalQueryRequest:
+      type: object
+      required: [command]
+      properties:
+        command:
+          type: string
+          example: search peserta P00182
+    TerminalQueryResponse:
+      type: object
+      properties:
+        command:
+          type: string
+        type:
+          type: string
+        title:
+          type: string
+        riskScore:
+          type: integer
+
+paths:
+  /auth/login:
+    post:
+      summary: Autentikasi Pengguna & Penerbitan Token JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Berhasil terautentikasi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Kredensial tidak valid
+
+  /auth/refresh:
+    post:
+      summary: Rotasi Refresh Token
+      responses:
+        '200':
+          description: Token baru berhasil diterbitkan
+
+  /overview:
+    get:
+      summary: Ringkasan Agregasi Intelijen Terminal
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Data ringkasan telemetry dan status subsistem
+
+  /participants:
+    get:
+      summary: Daftar Peserta Tersamarkan (Pseudonym)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Array objek peserta
+
+  /participants/{id}:
+    get:
+      summary: Detail Profil Risiko Peserta
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Data lengkap peserta
+
+  /network:
+    get:
+      summary: Graf Relasi Jejaring Risiko 3D
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Nodes dan edges topologi jaringan
+
+  /terminal/query:
+    post:
+      summary: Kueri Parser Command Terminal
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TerminalQueryRequest'
+      responses:
+        '200':
+          description: Hasil eksekusi terstruktur visual
